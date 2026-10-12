@@ -16,6 +16,7 @@ public class TrivialLineRasterizer implements LineRasterizer {
         rasterize(line.getPoint1().getX(), line.getPoint2().getX(), line.getPoint1().getY(), line.getPoint2().getY(), line.getColour());
     }
 
+    // line rasterizer funkce
     private void rasterize(int x1, int x2, int y1, int y2, int colour){
         int dx = x2 - x1;
         int dy = y2 - y1;

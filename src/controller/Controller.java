@@ -45,21 +45,22 @@ public class Controller {
         this.canvas = canvas;
         this.rasterizer = new TrivialLineRasterizer(canvas.getRaster());
         this.polygonRasterizer = new FinalPolygonRasterizer(rasterizer);
-        this.polygon = new Polygon(new ArrayList<>());
+        this.lines = new ArrayList<>();
+        this.polygon = new Polygon(lines);
     }
 
     /* -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-= Main functions -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=- */
 
     public void init() {
         canvas.clear();
-        // rasterizer.rasterize(new Line(new Point(50, 50), new Point(300, 500), Color.WHITE.getRGB()));
-        polygonRasterizer.rasterize(new Polygon(lines));
         // Obsluha vstupu z myši
         canvas.addMouseListener(new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) {
                 if (e.getButton() == MouseEvent.BUTTON3) {
                     finishPolygon();
+                } else if (e.getButton() == MouseEvent.BUTTON2) {
+                    changePoint(e);
                 } else if (e.getButton() == MouseEvent.BUTTON1) {
                     startLine(e);
                 }
@@ -67,14 +68,29 @@ public class Controller {
 
             @Override
             public void mouseReleased(MouseEvent e) {
-                
+                if (e.getButton() == MouseEvent.BUTTON1 && previewLine != null) {
+                    lines.add(new Line(
+                            previewLine.getPoint1(),
+                            previewLine.getPoint2(),
+                            LINE_COLOUR
+                    ));
+                    previewLine = null;
+                    render();
+                }
             }
         });
 
         canvas.addMouseMotionListener(new MouseMotionAdapter() {
             @Override
             public void mouseDragged(MouseEvent e) {
-                // TODO: zobrazit preview čáru
+                if (previewLine != null) {
+                    previewLine = new Line(
+                            previewLine.getPoint1(),
+                            getPoint(e),
+                            PREVIEW_COLOUR
+                    );
+                    render();
+                }
             }
         });
 
@@ -82,7 +98,15 @@ public class Controller {
         canvas.addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
-                // TODO: stisknutí klávesy C -> smazání canvasu
+                if (e.getKeyCode() == KeyEvent.VK_C) {
+                    lines.clear();
+                    previewLine = null;
+                    render();
+                }
+
+                if (e.getKeyCode() == KeyEvent.VK_E) {
+
+                }
             }
         });
     }
@@ -90,17 +114,71 @@ public class Controller {
     public void render(){
         canvas.clear();
         polygonRasterizer.rasterize(polygon);
+        if (previewLine != null) {
+            rasterizer.rasterize(previewLine);
+        }
         canvas.repaint();
     }
 
     private void startLine(MouseEvent e){
-        // vzít poslední bod polygonu
-        // vzít getPoint(e) - aktuální bod
-        // previewLine = new Line(startPoint, lastPoint, PREVIEW_COLOUR)
+        Point currentPoint = getPoint(e);
+
+        if (lines.isEmpty()) {
+            rasterizer.rasterize(new Line(currentPoint, currentPoint, LINE_COLOUR));
+            lines.add(new Line(currentPoint, currentPoint, LINE_COLOUR));
+            canvas.repaint();
+            return;
+        }
+
+        Point startPoint = lines.get(lines.size() - 1).getPoint2();
+        previewLine = new Line(startPoint, currentPoint, PREVIEW_COLOUR);
+        render();
     }
 
     private void finishPolygon(){
         previewLine = null;
+        render();
+    }
+
+    private void changePoint(MouseEvent e){
+        if (lines.isEmpty()) {
+            return;
+        }
+
+        Point newPoint = getPoint(e);
+        Point nearestPoint = null;
+        long nearestDistance = Long.MAX_VALUE;
+
+        for (Line line : lines) {
+            Point[] points = {line.getPoint1(), line.getPoint2()};
+            for (Point point : points) {
+                long dx = point.getX() - newPoint.getX();
+                long dy = point.getY() - newPoint.getY();
+                long distance = dx * dx + dy * dy;
+
+                if (distance < nearestDistance) {
+                    nearestDistance = distance;
+                    nearestPoint = point;
+                }
+            }
+        }
+
+        for (int i = 0; i < lines.size(); i++) {
+            Line line = lines.get(i);
+            Point point1 = line.getPoint1();
+            Point point2 = line.getPoint2();
+
+            if (point1 == nearestPoint) {
+                point1 = newPoint;
+            }
+
+            if (point2 == nearestPoint) {
+                point2 = newPoint;
+            }
+
+            lines.set(i, new Line(point1, point2, line.getColour()));
+        }
+
         render();
     }
 
